@@ -48,7 +48,7 @@
             font-family: inherit;
             background-color: #ffffff;
         }
-        .speed-box, .file-name-box, .voice-backup-box, .voice-source-box, .dictionary-box, .text-backup-box {
+        .speed-box, .file-name-box, .voice-backup-box, .voice-source-box, .dictionary-box {
             margin-bottom: 16px;
             background: #fafafa;
             padding: 12px;
@@ -162,15 +162,6 @@
         <label for="textInput">Testo da sintetizzare:</label>
         <textarea id="textInput" placeholder="Inserisci il testo qui...">Benvenuti nel comune Formīgine. Contattateci al numero 059123456 oppure telefonate alle 8:15 o alle 10:30 il sabato 2025.</textarea>
 
-        <div class="text-backup-box">
-            <label>Gestione Testo:</label>
-            <div class="backup-row">
-                <button id="exportTextBtn" type="button">Salva Testo su File</button>
-                <button id="importTextBtn" type="button">Carica Testo da File</button>
-                <input type="file" id="importTextFileinput" accept=".txt" style="display: none;">
-            </div>
-        </div>
-
         <button id="generateBtn" disabled>Sintetizza Audio</button>
         <button id="downloadBtn" class="download-btn">Scarica File Audio</button>
     </div>
@@ -238,7 +229,7 @@
                         console.warn(`Tentativo fallito su ${url}:`, e);
                     }
                 }
-                throw new Error(`Impossibile scaricare ${voiceName}.bin dal repository.`);
+                throw new Error(`Impossibile scaricare ${voiceName}.bin dal repository (Verifica la connessione o passa alla modalità offline locale).`);
             }
         },
         exportVoices() {
@@ -307,12 +298,6 @@
     const exportVoicesBtn = document.getElementById("exportVoicesBtn");
     const importVoicesBtn = document.getElementById("importVoicesBtn");
     const importFileinput = document.getElementById("importFileinput");
-    
-    // Riferimenti per Gestione Testo
-    const exportTextBtn = document.getElementById("exportTextBtn");
-    const importTextBtn = document.getElementById("importTextBtn");
-    const importTextFileinput = document.getElementById("importTextFileinput");
-
     const dictWordInput = document.getElementById("dictWord");
     const dictPhonemeInput = document.getElementById("dictPhoneme");
     const addDictBtn = document.getElementById("addDictBtn");
@@ -406,6 +391,7 @@
 
     function preprocessItalianText(text) {
         let s = text;
+
         s = s.replace(/\b[nN]\.?\s*(?=\d)/g, "");
         s = s.replace(/\//g, " ");
 
@@ -482,8 +468,9 @@
         return s;
     }
 
-    function splitIntoChunks(text, maxChars = 250) {
-        const sentences = text.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [text];
+    // Chunking ottimizzato e ampliato fino a 1500 caratteri per elaborare testi lunghi senza troncamenti
+    function splitIntoChunks(text, maxChars = 1500) {
+        const sentences = text.match(/[^.!?\n]+[.!?\n]+|\s*[^.!?\n]+$/g) || [text];
         let chunks = [];
         let currentChunk = "";
 
@@ -495,7 +482,7 @@
                 currentChunk = sentence;
             }
         }
-        if (currentChunk) chunks.push(currentChunk.trim());
+        if (currentChunk.trim()) chunks.push(currentChunk.trim());
         return chunks;
     }
 
@@ -576,7 +563,7 @@
 
         try {
             const processedText = preprocessItalianText(rawText);
-            const chunks = splitIntoChunks(processedText, 250);
+            const chunks = splitIntoChunks(processedText, 1500);
             
             const voiceData = await window.SimJS.loadVoice(voiceName, selectedSourceMode, (msg) => { statusText.textContent = msg; });
 
@@ -661,36 +648,6 @@
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
-    });
-
-    // Funzionalità Salva e Carica Testo
-    exportTextBtn.addEventListener("click", () => {
-        const textContent = textInput.value;
-        const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "testo_formigine.txt";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
-
-    importTextBtn.addEventListener("click", () => {
-        importTextFileinput.click();
-    });
-
-    importTextFileinput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            textInput.value = event.target.result;
-            statusText.textContent = "Testo caricato con successo dal file!";
-        };
-        reader.onerror = () => {
-            statusText.textContent = "Errore durante la lettura del file di testo.";
-        };
-        reader.readAsText(file);
     });
 
     voiceSelect.addEventListener("change", async () => {
