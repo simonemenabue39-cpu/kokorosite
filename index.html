@@ -173,7 +173,7 @@
             <div class="backup-row">
                 <button id="exportVoicesBtn" type="button">Salva Voci su File</button>
                 <button id="importVoicesBtn" type="button">Carica Voci da File</button>
-                <input type="file" id="importFileinput" accept=".bin" multiple>
+                <input type="file" id="importFileInput" accept=".bin" multiple>
             </div>
         </div>
 
@@ -312,7 +312,7 @@
     const fileNameInput = document.getElementById("fileNameInput");
     const exportVoicesBtn = document.getElementById("exportVoicesBtn");
     const importVoicesBtn = document.getElementById("importVoicesBtn");
-    const importFileinput = document.getElementById("importFileinput");
+    const importFileInput = document.getElementById("importFileInput");
     const loadTextFileBtn = document.getElementById("loadTextFileBtn");
     const saveTextFileBtn = document.getElementById("saveTextFileBtn");
     const textFileInput = document.getElementById("textFileInput");
@@ -376,7 +376,6 @@
         return n.toString();
     }
 
-    // Dizionario di pronunce e accenti perfetti in italiano standard ed emiliano locale
     const forcedItalianAccents = {
         "formigine": "formˈiːdʒine",
         "formīgine": "formˈiːdʒine",
@@ -444,10 +443,8 @@
     function preprocessItalianText(text) {
         let s = text;
 
-        // Regola: rimuove la 'n' prima dei numeri telefonici
         s = s.replace(/\b[nN]\.?\s*(?=\d)/g, "");
 
-        // Gestione orari in italiano standard ("otto e un quarto", "otto e mezza")
         s = s.replace(/\b(dalle|alle)?\s*([0-1]?[0-9]|2[0-3]):15\b/gi, (match, prep, h) => {
             const prefix = prep ? prep.toLowerCase() + " " : "";
             const hNum = parseInt(h, 10);
@@ -464,12 +461,10 @@
             return `${prefix}${hNum === 12 ? 'dodici' : (hourWords[hNum] || h)}`;
         });
 
-        // Gestione anni
         s = s.replace(/\b(19\d{2}|20\d{2})\b/g, (match) => {
             return numberToYearWords(match);
         });
 
-        // Conversione cifre numeriche
         s = s.replace(/\b\d+\b/g, (match) => {
             const n = parseInt(match, 10);
             if (n === 12) return "dodici";
@@ -483,7 +478,6 @@
         s = s.toLowerCase();
         s = s.replace(/[’']/g, " ");
 
-        // Controllo e applicazione dizionario personalizzato IPA
         s = s.replace(/\b[a-zàèéìòùīā]+\b/g, (word) => {
             if (forcedItalianAccents[word]) {
                 return `__PHON_${forcedItalianAccents[word]}__`;
@@ -612,6 +606,32 @@
             console.error("Errore inizializzazione:", error);
             statusText.textContent = "Errore caricamento: " + error.message;
         }
+    });
+
+    // --- CORRETTO: Gestione pulsante di caricamento voci ---
+    importVoicesBtn.addEventListener("click", () => {
+        importFileInput.click();
+    });
+
+    importFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        try {
+            for (let file of files) {
+                const voiceName = file.name.replace(/\.bin$/i, "");
+                statusText.textContent = `Caricamento voce "${voiceName}" in corso...`;
+                await window.SimJS.loadVoice(voiceName, 'local', (msg) => { statusText.textContent = msg; }, file);
+            }
+            statusText.textContent = `Tutte le voci selezionate sono state caricate con successo!`;
+        } catch (err) {
+            console.error("Errore caricamento voci:", err);
+            statusText.textContent = "Errore nel caricamento dei file voce: " + err.message;
+        }
+    });
+
+    exportVoicesBtn.addEventListener("click", () => {
+        window.SimJS.exportVoices();
     });
 
     generateBtn.addEventListener("click", async () => {
