@@ -107,7 +107,7 @@
             background-color: #ffffff;
         }
         .dict-list {
-            max-height: 120px;
+            max-height: 140px;
             overflow-y: auto;
             background: #ffffff;
             border: 1px solid #ddd;
@@ -158,14 +158,12 @@
             <label>Gestione Avanzata Pronunce, Giorni e Parole (Interfaccia Grafica):</label>
             <div class="dict-inputs">
                 <input type="text" id="dictWord" placeholder="Parola / Giorno (es. lunedì)">
-                <input type="text" id="dictPhoneme" placeholder="Pronuncia IPA (es. lunedˈi)">
+                <input type="text" id="dictPhoneme" placeholder="Pronuncia IPA (es. luneˈdi)">
             </div>
             <div class="dict-row">
                 <button id="addDictBtn" type="button">Aggiungi / Aggiorna Regola</button>
             </div>
-            <div class="dict-list" id="dictListContainer">
-                <!-- Elenco dinamico inserito da JavaScript -->
-            </div>
+            <div class="dict-list" id="dictListContainer"></div>
         </div>
 
         <div class="voice-backup-box">
@@ -352,8 +350,8 @@
             return "duemila" + numberToWords(rem);
         } else if (n >= 1900 && n <= 1999) {
             const rem = n - 1900;
-            if (rem === 0) return "milanovecento";
-            return "milanovecento" + numberToWords(rem);
+            if (rem === 0) return "millenovecento";
+            return "millenovecento" + numberToWords(rem);
         }
         return numStr;
     }
@@ -376,36 +374,52 @@
         return n.toString();
     }
 
+    // Dizionario IPA sillabico italiano ottimizzato per Kokoro-82M:
+    // L'accento primario ˈ precede sempre la consonante iniziale della sillaba tonica
+    // e si usa 'g' standard (U+0067) compatibile con il tokenizer Transformers.js di Kokoro.
     const forcedItalianAccents = {
-        "formigine": "formˈiːdʒine",
-        "formīgine": "formˈiːdʒine",
-        "comune": "komˈune",
-        "modena": "mˈɔdena",
-        "emilia": "emˈilja",
-        "sabato": "sˈabato",
-        "sabati": "sˈabati",
-        "agosto": "aɡˈɔsto",
-        "lunedì": "lunedˈi",
-        "martedì": "martedˈi",
-        "mercoledì": "merkoledˈi",
-        "giovedì": "dʒovedˈi",
-        "venerdì": "venerdˈi",
-        "domenica": "domˈenika",
-        "sedici": "sˈɛditʃi",
-        "dodici": "dˈɔditʃi",
-        "ventitré": "ventitrˈe",
-        "telefono": "telˈɛfono",
-        "ufficio": "uffˈitʃo",
-        "l'ufficio": "luffˈitʃo",
-        "l ufficio": "luffˈitʃo",
-        "polizia": "politsˈia",
+        "formigine": "forˈmiːdʒine",
+        "formīgine": "forˈmiːdʒine",
+        "comune": "koˈmune",
+        "modena": "ˈmɔdena",
+        "emilia": "eˈmilja",
+        "sabato": "ˈsabato",
+        "sabati": "ˈsabati",
+        "agosto": "aˈgosto",
+        "nascita": "ˈnaʃʃita",
+        "nascite": "ˈnaʃʃite",
+        "morte": "ˈmɔrte",
+        "denunce": "deˈnuntʃe",
+        "denuncia": "deˈnuntʃa",
+        "lunedì": "luneˈdi",
+        "martedì": "marteˈdi",
+        "mercoledì": "merkoleˈdi",
+        "giovedì": "dʒoveˈdi",
+        "venerdì": "venereˈdi",
+        "domenica": "doˈmenika",
+        "sedici": "ˈseditʃi",
+        "dodici": "ˈdoditʃi",
+        "ventitré": "ventiˈtre",
+        "telefono": "teˈlɛfono",
+        "telefonare": "telefoˈnare",
+        "ufficio": "ufˈfitʃo",
+        "uffici": "ufˈfitʃi",
+        "l'ufficio": "lufˈfitʃo",
+        "l ufficio": "lufˈfitʃo",
+        "polizia": "politˈtsia",
         "mortuaria": "mortuˈarja",
-        "civile": "tʃivˈile",
-        "stato": "stˈato",
-        "residenza": "residˈɛntsa",
-        "cittadinanza": "tʃittadinˈantsa",
-        "municipio": "munitʃˈipjo",
-        "autocertificazione": "autotʃertifikatʃˈjone"
+        "civile": "tʃiˈvile",
+        "stato": "ˈstato",
+        "residenza": "resiˈdɛntsa",
+        "cittadinanza": "tʃittadiˈnantsa",
+        "municipio": "muniˈtʃipjo",
+        "autocertificazione": "autotʃertifikatˈtsjone",
+        "possibile": "posˈsibile",
+        "chiusi": "ˈkjuzi",
+        "chiusure": "kjuˈzure",
+        "avviso": "avˈvizo",
+        "giorni": "ˈdʒorni",
+        "giorno": "ˈdʒorno"
     };
 
     function updateDictUI() {
@@ -472,53 +486,83 @@
             if (n < 100 && match.length <= 2 && !match.startsWith('0')) {
                 return numberToWords(n);
             }
-            return match.split('').map(char => digitWords[char] || char).join(' ');
+            return match.split('').map(char => digitWords[char] || char).join(', ');
         });
 
         s = s.toLowerCase();
         s = s.replace(/[’']/g, " ");
 
+        // Protegge le parole presenti nel dizionario IPA forzato
         s = s.replace(/\b[a-zàèéìòùīā]+\b/g, (word) => {
             if (forcedItalianAccents[word]) {
-                return `__PHON_${forcedItalianAccents[word]}__`;
+                return `[[PHON:${forcedItalianAccents[word]}]]`;
             }
             return word;
         });
 
-        s = s.split(/(__PHON_[^_]+__)/g).map(segment => {
-            if (segment.startsWith("__PHON_")) {
-                return segment.replace("__PHON_", "").replace("__", "");
+        s = s.split(/(\[\[PHON:[^\]]+\]\])/g).map(segment => {
+            if (segment.startsWith("[[PHON:")) {
+                return segment.slice(7, -2);
             }
 
             let part = segment;
-            part = part.replace(/é/g, "ˈe").replace(/è/g, "ˈɛ").replace(/ò/g, "ˈɔ").replace(/à/g, "ˈa").replace(/ì/g, "ˈi").replace(/ù/g, "ˈu");
 
-            part = part.replace(/gli(?=[aeiouɛɔ])/g, "ʎ");
+            // Trigrammi e digrammi consonantici italiani
+            part = part.replace(/gli(?=[aeiouàèéìòóù])/g, "ʎ");
             part = part.replace(/gli\b/g, "ʎi");
             part = part.replace(/gn/g, "ɲ");
-            part = part.replace(/sc(?=[ieɛ])/g, "ʃ");
+            part = part.replace(/sci(?=[aeouàèéòóù])/g, "ʃ");
+            part = part.replace(/sc(?=[eiéèì])/g, "ʃ");
             part = part.replace(/sch/g, "sk");
             part = part.replace(/ch/g, "k");
-            part = part.replace(/gh/g, "ɡ");
-            part = part.replace(/ci(?=[aouɔ])/g, "tʃ");
-            part = part.replace(/gi(?=[aouɔ])/g, "dʒ");
-            part = part.replace(/c(?=[ieɛ])/g, "tʃ");
-            part = part.replace(/g(?=[ieɛ])/g, "dʒ");
+            part = part.replace(/gh/g, "g");
+            part = part.replace(/ci(?=[aouàòù])/g, "tʃ");
+            part = part.replace(/gi(?=[aouàòù])/g, "dʒ");
+            part = part.replace(/c(?=[eiéèì])/g, "tʃ");
+            part = part.replace(/g(?=[eiéèì])/g, "dʒ");
             part = part.replace(/c/g, "k");
-            part = part.replace(/g/g, "ɡ");
             part = part.replace(/qu/g, "kw");
             part = part.replace(/q/g, "k");
+            part = part.replace(/zz/g, "tts");
             part = part.replace(/z/g, "ts");
             part = part.replace(/h/g, "");
+            part = part.replace(/([aeiouàèéìòóù])s([aeiouàèéìòóù])/g, "$1z$2");
 
+            // Posizionamento corretto dell'accento sillabico ˈ prima della consonante che apre la sillaba tonica
+            const accentMap = { 'à': 'a', 'è': 'ɛ', 'é': 'e', 'ì': 'i', 'ò': 'ɔ', 'ó': 'o', 'ù': 'u' };
             part = part.split(/\s+/).map(word => {
-                if (!word || /ˈ/.test(word) || word.length <= 2) return word;
-                const vowels = [...word.matchAll(/[aeiouɛɔ]/g)];
-                if (vowels.length >= 2) {
-                    const targetIdx = vowels[vowels.length - 2].index;
-                    return word.slice(0, targetIdx) + "ˈ" + word.slice(targetIdx);
+                if (!word || word.length <= 2 || !/[a-zàèéìòóùɛɔʎɲʃ]/.test(word)) return word;
+                let chars = word.split("");
+                let explicitIdx = -1;
+                let vowelIndices = [];
+
+                for (let i = 0; i < chars.length; i++) {
+                    if (accentMap[chars[i]]) {
+                        explicitIdx = i;
+                        chars[i] = accentMap[chars[i]];
+                    }
+                    if ("aeiouɛɔ".includes(chars[i])) {
+                        const nextC = i + 1 < chars.length ? chars[i + 1] : "";
+                        const isGlide = (chars[i] === "i" || chars[i] === "u") && ("aeoɛɔ".includes(nextC));
+                        if (!isGlide) vowelIndices.push(i);
+                    }
                 }
-                return word;
+
+                if (vowelIndices.length === 0) return chars.join("");
+
+                let targetVowel = explicitIdx !== -1
+                    ? explicitIdx
+                    : (vowelIndices.length >= 2 ? vowelIndices[vowelIndices.length - 2] : vowelIndices[0]);
+
+                let insertPos = targetVowel;
+                if (insertPos > 0 && !"aeiouɛɔ".includes(chars[insertPos - 1])) {
+                    insertPos--;
+                    if (insertPos > 0 && !"aeiouɛɔ".includes(chars[insertPos - 1]) && chars[insertPos] !== chars[insertPos - 1]) {
+                        insertPos--;
+                    }
+                }
+                chars.splice(insertPos, 0, "ˈ");
+                return chars.join("");
             }).join(" ");
 
             return part;
@@ -608,7 +652,6 @@
         }
     });
 
-    // --- CORRETTO: Gestione pulsante di caricamento voci ---
     importVoicesBtn.addEventListener("click", () => {
         importFileInput.click();
     });
